@@ -60,17 +60,24 @@ class User(Resource):
         if not user:
             abort(404, "User cannot be found")
         return user
-    
+
     # TODO:: Test this
     @marshal_with(user_fields)
     def patch(self, id):
-        args = validate.parse_args()
+        update_user = reqparse.request.get_json() or {}
         user = UserModel.query.filter_by(id=id).first()
         if not user:
             abort(404, "User cannot be found")
-        user.name = args["name"]
-        user.email = args["email"]
-        user.dob = args["dob"]
+
+        # Guard which field user has access to
+        allowed_fields = ['name', 'email', 'dob']
+
+        for field, value in update_user.items():
+            if field in allowed_fields and hasattr(user, field):
+                setattr(user, field, value)
+            else:
+                return f"Field '{field}' does not exist on User model", 404
+
         db.session.commit()
         return user
 
